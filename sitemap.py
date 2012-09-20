@@ -1,6 +1,7 @@
 import urllib2
 import zlib
 import lxml.etree
+import logging
 
 class SiteMaps(object):
     def __init__(self, domain, links=1000):
@@ -8,6 +9,7 @@ class SiteMaps(object):
         self.links = links
         self.sitemaps = []
         self.urls = []
+        self.fetched_sitemaps = []
     
     def read_robots(self):
         try:
@@ -21,8 +23,7 @@ class SiteMaps(object):
                 if line.lower().startswith('sitemap:'):
                     self.sitemaps.append(line[len('Sitemap:'):].strip())
         except Exception, e:
-            print e
-            pass
+            logging.exception(e)
     
     def run(self):
         self.read_robots()
@@ -30,9 +31,11 @@ class SiteMaps(object):
         while self.sitemaps and len(self.urls) < self.links:
             sitemap = self.sitemaps.pop()
             try:
+                urls_before = len(self.urls)
                 self.process_sitemap(sitemap)
-            except:
-                pass
+                self.fetched_sitemaps.append((sitemap, (urls_before, len(self.urls))))
+            except Exception, e:
+                logging.exception(e)
     
     def process_sitemap(self, sitemap):
         is_gzip = False
@@ -62,12 +65,15 @@ class SiteMaps(object):
                 self.sitemaps.append(loc.text.strip())
         
         for sitemap in tree.xpath('//sm:url | //url', namespaces=namespaces):
+            # TODO: add last update date, rank and update frequency
             for loc in sitemap.xpath('sm:loc | loc', namespaces=namespaces):
                 self.urls.append(loc.text.strip())
-                if len(self.urls) > self.links:
-                    break
+                if len(self.urls) >= self.links:
+                    return
 
 if __name__ == '__main__':
-    s = SiteMaps('specials.msn.com')
+    s = SiteMaps('washingtonpost.com')
     s.run()
-
+    print "sitemaps fetch intervals", s.fetched_sitemaps
+    print "fetched urls", len(s.urls)
+    
