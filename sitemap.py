@@ -70,3 +70,4 @@ class SiteMaps(object):
 if __name__ == '__main__':
     s = SiteMaps('specials.msn.com')
     s.run()
+
